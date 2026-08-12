@@ -7,10 +7,30 @@ import AppKit
 #endif
 
 /// Implementation of Color Ramp for MapTiler Weather SDK.
-public final class MTWeatherColorRamp: @unchecked Sendable {
+public final class MTWeatherColorRamp: @unchecked Sendable, Codable {
     public private(set) var min: Double
     public private(set) var max: Double
     public private(set) var stops: [MTColorRampStop]
+
+    enum CodingKeys: String, CodingKey {
+        case min
+        case max
+        case stops
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        min = try container.decode(Double.self, forKey: .min)
+        max = try container.decode(Double.self, forKey: .max)
+        stops = try container.decode([MTColorRampStop].self, forKey: .stops)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(min, forKey: .min)
+        try container.encode(max, forKey: .max)
+        try container.encode(stops, forKey: .stops)
+    }
 
     /// Initializes a custom weather color ramp with explicit stops.
     public init(min: Double? = nil, max: Double? = nil, stops: [MTColorRampStop]) {
@@ -34,7 +54,16 @@ public final class MTWeatherColorRamp: @unchecked Sendable {
     /// Returns bounds of the color ramp.
     public var bounds: MTColorRampBounds {
         let json = "{\"min\":\(min),\"max\":\(max)}"
-        return try! JSONDecoder().decode(MTColorRampBounds.self, from: json.data(using: .utf8)!)
+
+        guard let data = json.data(using: .utf8) else {
+            fatalError("Invalid JSON string for MTColorRampBounds")
+        }
+
+        do {
+            return try JSONDecoder().decode(MTColorRampBounds.self, from: data)
+        } catch {
+            fatalError("Failed to decode MTColorRampBounds: \(error)")
+        }
     }
 
     /// Clones the color ramp.
@@ -126,7 +155,7 @@ public final class MTWeatherColorRamp: @unchecked Sendable {
             let redVal = Int(round(Double(colorBefore.red) * beforeRatio + Double(colorAfter.red) * afterRatio))
             let greenVal = Int(round(Double(colorBefore.green) * beforeRatio + Double(colorAfter.green) * afterRatio))
             let blueVal = Int(round(Double(colorBefore.blue) * beforeRatio + Double(colorAfter.blue) * afterRatio))
-            
+
             let alphaBefore = Double(colorBefore.alpha ?? 255)
             let alphaAfter = Double(colorAfter.alpha ?? 255)
             let alphaVal = Int(round(alphaBefore * beforeRatio + alphaAfter * afterRatio))

@@ -20,6 +20,9 @@ let package = Package(
             name: "MapTilerWeather",
             dependencies: [
                 .product(name: "MapTilerSDK", package: "maptiler-sdk-swift")
+            ],
+            resources: [
+                .process("Resources")
             ]
         ),
         .testTarget(

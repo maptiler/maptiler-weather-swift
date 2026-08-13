@@ -3,30 +3,33 @@
 // All rights reserved.
 // SPDX-License-Identifier: BSD 3-Clause
 //
-//  MTPrecipitationLayer.swift
+//  MTPressureLayer.swift
 //  MapTilerWeather
 //
 
 import Foundation
 import MapTilerSDK
 
-/// A layer that displays precipitation data.
-public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
+/// A layer that displays atmospheric pressure data.
+///
+/// The PressureLayer shows the atmospheric pressure in millibar (mbar) or hectopascal (hPa).
+/// Forecast for air pressure at mean sea level.
+public class MTPressureLayer: MTWeatherLayer, @unchecked Sendable {
     override public var jsClassName: String {
-        return "PrecipitationLayer"
+        return "PressureLayer"
     }
 
-    /// Initializes a new precipitation layer.
+    /// Initializes a new pressure layer.
     ///
     /// - Parameters:
-    ///   - identifier: Unique layer identifier. Defaults to "MapTiler Precipitation".
+    ///   - identifier: Unique layer identifier. Defaults to "MapTiler Pressure".
     ///   - colorRamp: Color ramp used to represent the weather data.
-    ///     Defaults to ``MTWeatherColorRampPreset/precipitation``.
+    ///     Defaults to ``MTWeatherColorRampPreset/pressure2``.
     ///   - opacity: The opacity at which the weather data will be drawn. Defaults to 1.
     ///   - smooth: Whether or not the colorramp must be smooth. Defaults to true.
     public init(
-        identifier: String = "MapTiler Precipitation",
-        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .precipitation),
+        identifier: String = "MapTiler Pressure",
+        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .pressure2),
         opacity: Double = 1.0,
         smooth: Bool = true
     ) {
@@ -40,27 +43,27 @@ public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
         try super.init(from: decoder)
     }
 
-    /// Picks precipitation data at a specific location.
+    /// Picks pressure data at a specific location.
     ///
     /// - Parameters:
     ///   - lng: Longitude.
     ///   - lat: Latitude.
-    /// - Returns: Precipitation value in mm/h, or nil if not available.
-    public func pickAt(lng: Double, lat: Double) async throws -> MTPrecipitationValue? {
+    /// - Returns: Pressure value in hPa (mbar), or nil if not available.
+    public func pickAt(lng: Double, lat: Double) async throws -> MTPressureValue? {
         guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
             return nil
         }
 
         if let value = dict["value"] as? Double {
-            return MTPrecipitationValue(value: value)
+            return MTPressureValue(value: value)
         }
 
         return nil
     }
 }
 
-/// Precipitation value at a given location.
-public struct MTPrecipitationValue: Sendable {
-    /// Precipitation in mm/h.
+/// Pressure value at a given location.
+public struct MTPressureValue: Sendable {
+    /// Pressure in hPa (hectopascal) or mbar (millibar).
     public let value: Double
 }

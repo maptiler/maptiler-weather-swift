@@ -54,7 +54,6 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     /// Weak reference to the map view this layer is added to.
     internal weak var mapView: MTMapView?
 
-    /// The name of the JavaScript class to be instantiated for this layer.
     open var jsClassName: String {
         return "WeatherLayer"
     }
@@ -94,7 +93,13 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
         let command = PickAtWeatherLayerCommand(layerId: self.identifier, lng: lng, lat: lat)
         let result = try await mapView.execute(command: command)
-        return result as? [String: Any]
+
+        switch result {
+        case .stringDoubleDict(let dict):
+            return dict
+        default:
+            return nil
+        }
     }
 
     // MARK: - Codable

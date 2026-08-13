@@ -11,7 +11,7 @@ import Foundation
 import MapTilerSDK
 
 /// Command to pick weather data at a specific location for a given layer.
-internal struct PickAtWeatherLayerCommand: MTCommand {
+internal struct PickAtWeatherLayerCommand: MTValueCommand {
     let layerId: String
     let lng: Double
     let lat: Double
@@ -19,7 +19,8 @@ internal struct PickAtWeatherLayerCommand: MTCommand {
     func toJS() -> JSString {
         return """
         (function() {
-            var layer = map.getLayer("\(layerId)");
+            var styleLayer = map.getLayer("\(layerId)");
+            var layer = styleLayer ? (styleLayer.implementation || styleLayer) : null;
             if (layer && typeof layer.pickAt === 'function') {
                 return layer.pickAt(\(lng), \(lat));
             }

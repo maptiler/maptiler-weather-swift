@@ -93,7 +93,13 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
         let command = PickAtWeatherLayerCommand(layerId: self.identifier, lng: lng, lat: lat)
         let result = try await mapView.execute(command: command)
-        return result as? [String: Any]
+
+        switch result {
+        case .stringDoubleDict(let dict):
+            return dict
+        default:
+            return nil
+        }
     }
 
     // MARK: - Codable

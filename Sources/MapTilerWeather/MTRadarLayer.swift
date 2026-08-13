@@ -3,30 +3,33 @@
 // All rights reserved.
 // SPDX-License-Identifier: BSD 3-Clause
 //
-//  MTPrecipitationLayer.swift
+//  MTRadarLayer.swift
 //  MapTilerWeather
 //
 
 import Foundation
 import MapTilerSDK
 
-/// A layer that displays precipitation data.
-public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
+/// A layer that displays atmospheric radar reflectivity.
+///
+/// The RadarLayer shows the atmospheric radar reflectivity in radar reflectivity factor (dBZ).
+/// Forecast for maximum composite radar reflectivity value.
+public class MTRadarLayer: MTWeatherLayer, @unchecked Sendable {
     override public var jsClassName: String {
-        return "PrecipitationLayer"
+        return "RadarLayer"
     }
 
-    /// Initializes a new precipitation layer.
+    /// Initializes a new radar layer.
     ///
     /// - Parameters:
-    ///   - identifier: Unique layer identifier. Defaults to "MapTiler Precipitation".
+    ///   - identifier: Unique layer identifier. Defaults to "MapTiler Radar".
     ///   - colorRamp: Color ramp used to represent the weather data.
-    ///     Defaults to ``MTWeatherColorRampPreset/precipitation``.
+    ///     Defaults to ``MTWeatherColorRampPreset/radar``.
     ///   - opacity: The opacity at which the weather data will be drawn. Defaults to 1.
     ///   - smooth: Whether or not the colorramp must be smooth. Defaults to true.
     public init(
-        identifier: String = "MapTiler Precipitation",
-        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .precipitation),
+        identifier: String = "MapTiler Radar",
+        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .radar),
         opacity: Double = 1.0,
         smooth: Bool = true
     ) {
@@ -40,27 +43,27 @@ public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
         try super.init(from: decoder)
     }
 
-    /// Picks precipitation data at a specific location.
+    /// Picks radar data at a specific location.
     ///
     /// - Parameters:
     ///   - lng: Longitude.
     ///   - lat: Latitude.
-    /// - Returns: Precipitation value in mm/h, or nil if not available.
-    public func pickAt(lng: Double, lat: Double) async throws -> MTPrecipitationValue? {
+    /// - Returns: Radar reflectivity value in dBZ, or nil if not available.
+    public func pickAt(lng: Double, lat: Double) async throws -> MTRadarValue? {
         guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
             return nil
         }
 
         if let value = dict["value"] as? Double {
-            return MTPrecipitationValue(value: value)
+            return MTRadarValue(value: value)
         }
 
         return nil
     }
 }
 
-/// Precipitation value at a given location.
-public struct MTPrecipitationValue: Sendable {
-    /// Precipitation in mm/h.
+/// Radar reflectivity value at a given location.
+public struct MTRadarValue: Sendable {
+    /// Radar reflectivity in dBZ.
     public let value: Double
 }

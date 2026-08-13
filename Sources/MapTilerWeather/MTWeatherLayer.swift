@@ -54,7 +54,6 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     /// Weak reference to the map view this layer is added to.
     internal weak var mapView: MTMapView?
 
-    /// The name of the JavaScript class to be instantiated for this layer.
     open var jsClassName: String {
         return "WeatherLayer"
     }

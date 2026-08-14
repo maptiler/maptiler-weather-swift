@@ -23,4 +23,12 @@ final class MapTilerWeatherTests: XCTestCase {
         XCTAssertEqual(layer.jsClassName, "RadarLayer")
     }
 
+    func testTemperatureLayerInitialization() throws {
+        let layer = MTTemperatureLayer()
+        XCTAssertEqual(layer.identifier, "MapTiler Temperature")
+        XCTAssertEqual(layer.opacity, 1.0)
+        XCTAssertEqual(layer.smooth, true)
+        XCTAssertEqual(layer.jsClassName, "TemperatureLayer")
+    }
+
 }

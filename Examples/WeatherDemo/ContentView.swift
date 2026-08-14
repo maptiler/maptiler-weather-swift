@@ -12,6 +12,7 @@ enum WeatherLayerType: String, CaseIterable, Identifiable {
     case precipitation = "Precipitation"
     case pressure = "Pressure"
     case radar = "Radar"
+    case temperature = "Temperature"
 
     var id: String { self.rawValue }
 }
@@ -24,6 +25,7 @@ struct ContentView: View {
     // State for picked weather data
     @State private var pickedValue: String?
     @State private var pickedLocation: CLLocationCoordinate2D?
+    @State private var currentMarker: MTMarker?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -48,17 +50,35 @@ struct ContentView: View {
 
             // Layer Picker
             VStack {
-                Picker("Weather Layer", selection: $selectedLayerType) {
-                    ForEach(WeatherLayerType.allCases) { layerType in
-                        Text(layerType.rawValue).tag(layerType)
+                Menu {
+                    Picker("Weather Layer", selection: $selectedLayerType) {
+                        ForEach(WeatherLayerType.allCases) { layerType in
+                            Label(layerType.rawValue, systemImage: iconName(for: layerType))
+                                .tag(layerType)
+                        }
                     }
+                } label: {
+                    HStack {
+                        Image(systemName: iconName(for: selectedLayerType))
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        Text(selectedLayerType.rawValue)
+                            .foregroundColor(.primary)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.up.chevron.down")
+                            .foregroundColor(.secondary)
+                            .imageScale(.small)
+                    }
+                    .padding()
+                    .frame(width: 240)
+                    .background(.regularMaterial)
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.15), radius: 5, x: 0, y: 2)
                 }
-                .pickerStyle(.segmented)
-                .padding()
-                .background(.regularMaterial)
-                .cornerRadius(10)
-                .padding(.horizontal)
-                .shadow(radius: 5)
             }
             .padding(.top, 16)
             
@@ -90,6 +110,10 @@ struct ContentView: View {
                         Button(action: {
                             self.pickedValue = nil
                             self.pickedLocation = nil
+                            if let existingMarker = currentMarker {
+                                mapView.removeMarker(existingMarker)
+                                currentMarker = nil
+                            }
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .symbolRenderingMode(.hierarchical)
@@ -111,6 +135,10 @@ struct ContentView: View {
             // Clear picked data when layer changes
             self.pickedValue = nil
             self.pickedLocation = nil
+            if let existingMarker = currentMarker {
+                mapView.removeMarker(existingMarker)
+                currentMarker = nil
+            }
             updateWeatherLayer(to: newType)
         }
     }
@@ -132,6 +160,8 @@ struct ContentView: View {
             newLayer = MTPressureLayer()
         case .radar:
             newLayer = MTRadarLayer()
+        case .temperature:
+            newLayer = MTTemperatureLayer()
         }
 
         newLayer.addTo(mapView)
@@ -160,12 +190,27 @@ struct ContentView: View {
                         let res: MTRadarValue? = try await radarLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
                         value = res.map { String(format: "%.1f dBZ", $0.value) }
                     }
+                case .temperature:
+                    if let temperatureLayer = layer as? MTTemperatureLayer {
+                        let res: MTTemperatureValue? = try await temperatureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                        value = res.map { String(format: "%.1f °C", $0.value) }
+                    }
                 }
                 
                 let finalValue = value
                 await MainActor.run {
                     self.pickedValue = finalValue
                     self.pickedLocation = coordinate
+                    
+                    // Update marker
+                    if let existingMarker = currentMarker {
+                        mapView.removeMarker(existingMarker)
+                    }
+                    if finalValue != nil {
+                        let newMarker = MTMarker(coordinates: coordinate)
+                        mapView.addMarker(newMarker)
+                        currentMarker = newMarker
+                    }
                 }
             } catch {
                 print("Failed to pick weather: \(error)")
@@ -178,6 +223,7 @@ struct ContentView: View {
         case .precipitation: return "cloud.rain.fill"
         case .pressure: return "gauge.medium"
         case .radar: return "antenna.radiowaves.left.and.right"
+        case .temperature: return "thermometer"
         }
     }
 }

@@ -30,7 +30,15 @@ internal struct AddWeatherLayerCommand: MTCommand {
         let jsClassName = layer.jsClassName
         let beforeIdCode = beforeId != nil ? "'\(beforeId!)'" : """
         (function() {
+            if (map.getLayer('Water')) return 'Water';
+            if (map.getLayer('water')) return 'water';
             var layers = map.getStyle().layers;
+            for (var i = 0; i < layers.length; i++) {
+                var id = layers[i].id.toLowerCase();
+                if (id.indexOf('boundary') !== -1 || id.indexOf('border') !== -1) {
+                    return layers[i].id;
+                }
+            }
             for (var i = 0; i < layers.length; i++) {
                 if (layers[i].type === 'symbol') {
                     return layers[i].id;
@@ -67,7 +75,18 @@ internal struct AddWeatherLayerCommand: MTCommand {
                 delete options.source;
                 delete options.visibility;
 
-                map.addLayer(new weatherNS.\(jsClassName)(options), \(beforeIdCode));
+                var before = \(beforeIdCode);
+
+                // Adjust water opacity if inserting below water
+                if (before === 'Water' || before === 'water') {
+                    try {
+                        map.setPaintProperty(before, 'fill-color', 'rgba(0, 0, 0, 0.4)');
+                    } catch (e) {
+                        console.error('Failed to set water transparency', e);
+                    }
+                }
+
+                map.addLayer(new weatherNS.\(jsClassName)(options), before);
             }
             tryAddLayer(10);
         })();

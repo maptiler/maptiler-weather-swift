@@ -51,7 +51,14 @@ public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
             return nil
         }
 
-        if let value = dict["value"] as? Double {
+        func getDouble(_ key: String) -> Double? {
+            if let val = dict[key] as? Double { return val }
+            if let val = dict[key] as? Int { return Double(val) }
+            if let val = dict[key] as? Float { return Double(val) }
+            return nil
+        }
+
+        if let value = getDouble("value") {
             return MTPrecipitationValue(value: value)
         }
 

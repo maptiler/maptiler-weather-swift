@@ -33,7 +33,7 @@ struct ContentView: View {
             MTMapViewContainer(map: mapView) {
                 // Map content goes here
             }
-            .referenceStyle(.dataviz)
+            .referenceStyle(.backdrop)
             .styleVariant(.light)
             .didTriggerEvent { event, data in
                 // Wait for the style to be loaded before adding weather layers
@@ -216,6 +216,7 @@ struct ContentView: View {
                     }
                     if finalValue != nil {
                         let newMarker = MTMarker(coordinates: coordinate)
+                        newMarker.anchor = .bottom
                         mapView.addMarker(newMarker)
                         currentMarker = newMarker
                     }

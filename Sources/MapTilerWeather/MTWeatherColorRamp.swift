@@ -45,6 +45,16 @@ public final class MTWeatherColorRamp: @unchecked Sendable, Codable {
         self.init(stops: preset.stops)
     }
 
+    /// A fully transparent color ramp.
+    ///
+    /// Use this to disable the background heatmap visualization while keeping
+    /// other elements (like wind particles) visible.
+    public static var none: MTWeatherColorRamp {
+        MTWeatherColorRamp(stops: [
+            MTColorRampStop(value: 0, color: MTRGBAColor(red: 0, green: 0, blue: 0, alpha: 0))
+        ])
+    }
+
     /// Converts this weather color ramp into a standard `MTColorRamp` suitable for map layers.
     @MainActor
     public var coreRamp: MTColorRamp {

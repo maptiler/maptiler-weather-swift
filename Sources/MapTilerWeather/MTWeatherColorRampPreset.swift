@@ -18,6 +18,7 @@ public enum MTWeatherColorRampPreset: String, Sendable, Codable, CaseIterable {
     case temperature3 = "TEMPERATURE_3"
     case temperatureTurbo = "TEMPERATURE_TURBO"
     case terrain = "TERRAIN"
+    case windViridis = "WIND_VIRIDIS"
     case windRocket = "WIND_ROCKET"
 }
 
@@ -265,9 +266,17 @@ extension MTWeatherColorRampPreset {
                 MTColorRampStop(value: 3000, color: MTRGBAColor(red: 102, green: 51, blue: 12, alpha: 255)),
                 MTColorRampStop(value: 8000, color: MTRGBAColor(red: 255, green: 255, blue: 255, alpha: 255))
             ]
+        case .windViridis:
+            return [
+                MTColorRampStop(value: 0, color: MTRGBAColor(red: 68, green: 1, blue: 84, alpha: 255)),
+                MTColorRampStop(value: 5, color: MTRGBAColor(red: 59, green: 82, blue: 139, alpha: 255)),
+                MTColorRampStop(value: 10, color: MTRGBAColor(red: 33, green: 144, blue: 141, alpha: 255)),
+                MTColorRampStop(value: 20, color: MTRGBAColor(red: 93, green: 201, blue: 99, alpha: 255)),
+                MTColorRampStop(value: 30, color: MTRGBAColor(red: 253, green: 231, blue: 37, alpha: 255))
+            ]
         case .windRocket:
             return [
-                MTColorRampStop(value: 0, color: MTRGBAColor(red: 250, green: 235, blue: 221, alpha: 255)),
+                MTColorRampStop(value: 0, color: MTRGBAColor(red: 250, green: 235, blue: 221, alpha: 0)),
                 MTColorRampStop(value: 1, color: MTRGBAColor(red: 246, green: 187, blue: 151, alpha: 255)),
                 MTColorRampStop(value: 3, color: MTRGBAColor(red: 244, green: 135, blue: 94, alpha: 255)),
                 MTColorRampStop(value: 5, color: MTRGBAColor(red: 236, green: 75, blue: 62, alpha: 255)),

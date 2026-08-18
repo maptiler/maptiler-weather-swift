@@ -27,8 +27,18 @@ internal struct AddWeatherLayerCommand: MTCommand {
             return ""
         }
 
-        let beforeIdArg = beforeId != nil ? "'\(beforeId!)'" : "undefined"
         let jsClassName = layer.jsClassName
+        let beforeIdCode = beforeId != nil ? "'\(beforeId!)'" : """
+        (function() {
+            var layers = map.getStyle().layers;
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol') {
+                    return layers[i].id;
+                }
+            }
+            return undefined;
+        })()
+        """
 
         return """
         (function() {
@@ -57,7 +67,7 @@ internal struct AddWeatherLayerCommand: MTCommand {
                 delete options.source;
                 delete options.visibility;
 
-                map.addLayer(new weatherNS.\(jsClassName)(options), \(beforeIdArg));
+                map.addLayer(new weatherNS.\(jsClassName)(options), \(beforeIdCode));
             }
             tryAddLayer(10);
         })();

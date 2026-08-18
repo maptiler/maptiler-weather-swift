@@ -57,12 +57,12 @@ public class MTWindLayer: MTWeatherLayer, @unchecked Sendable {
     /// - Parameters:
     ///   - identifier: Unique layer identifier. Defaults to "MapTiler Wind".
     ///   - colorRamp: Color ramp used to represent the weather data.
-    ///     Defaults to ``MTWeatherColorRampPreset/windRocket``.
+    ///     Defaults to ``MTWeatherColorRampPreset/windViridis``.
     ///   - opacity: The opacity at which the weather data will be drawn. Defaults to 1.
     ///   - smooth: Whether or not the colorramp must be smooth. Defaults to true.
     public init(
         identifier: String = "MapTiler Wind",
-        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .windRocket),
+        colorRamp: MTWeatherColorRamp = MTWeatherColorRamp(preset: .windViridis),
         opacity: Double = 1.0,
         smooth: Bool = true
     ) {

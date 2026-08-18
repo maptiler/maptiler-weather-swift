@@ -177,21 +177,14 @@ public struct MTWindValue: Sendable {
     public let speedMilesPerHour: Double
 
     init?(dict: [String: Any]) {
-        func getDouble(_ key: String) -> Double? {
-            if let val = dict[key] as? Double { return val }
-            if let val = dict[key] as? Int { return Double(val) }
-            if let val = dict[key] as? Float { return Double(val) }
-            return nil
-        }
-
         guard
             let compassDirection = dict["compassDirection"] as? String,
-            let directionAngle = getDouble("directionAngle"),
-            let speedFeetPerSecond = getDouble("speedFeetPerSecond"),
-            let speedKilometersPerHour = getDouble("speedKilometersPerHour"),
-            let speedKnots = getDouble("speedKnots"),
-            let speedMetersPerSecond = getDouble("speedMetersPerSecond"),
-            let speedMilesPerHour = getDouble("speedMilesPerHour")
+            let directionAngle = dict.getDouble("directionAngle"),
+            let speedFeetPerSecond = dict.getDouble("speedFeetPerSecond"),
+            let speedKilometersPerHour = dict.getDouble("speedKilometersPerHour"),
+            let speedKnots = dict.getDouble("speedKnots"),
+            let speedMetersPerSecond = dict.getDouble("speedMetersPerSecond"),
+            let speedMilesPerHour = dict.getDouble("speedMilesPerHour")
         else {
             return nil
         }

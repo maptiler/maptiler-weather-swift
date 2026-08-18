@@ -214,3 +214,12 @@ extension MTWeatherLayer {
         return self
     }
 }
+
+extension Dictionary where Key == String, Value == Any {
+    func getDouble(_ key: String) -> Double? {
+        if let val = self[key] as? Double { return val }
+        if let val = self[key] as? Int { return Double(val) }
+        if let val = self[key] as? Float { return Double(val) }
+        return nil
+    }
+}

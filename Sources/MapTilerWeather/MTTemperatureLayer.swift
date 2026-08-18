@@ -54,15 +54,8 @@ public class MTTemperatureLayer: MTWeatherLayer, @unchecked Sendable {
             return nil
         }
 
-        func getDouble(_ key: String) -> Double? {
-            if let val = dict[key] as? Double { return val }
-            if let val = dict[key] as? Int { return Double(val) }
-            if let val = dict[key] as? Float { return Double(val) }
-            return nil
-        }
-
-        if let value = getDouble("value"),
-            let valueImperial = getDouble("valueImperial") {
+        if let value = dict.getDouble("value"),
+            let valueImperial = dict.getDouble("valueImperial") {
             return MTTemperatureValue(value: value, valueImperial: valueImperial)
         }
 

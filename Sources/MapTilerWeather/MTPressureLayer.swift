@@ -54,19 +54,13 @@ public class MTPressureLayer: MTWeatherLayer, @unchecked Sendable {
             return nil
         }
 
-        func getDouble(_ key: String) -> Double? {
-            if let val = dict[key] as? Double { return val }
-            if let val = dict[key] as? Int { return Double(val) }
-            if let val = dict[key] as? Float { return Double(val) }
-            return nil
-        }
-
-        if let value = getDouble("value") {
+        if let value = dict.getDouble("value") {
             return MTPressureValue(value: value)
         }
 
         return nil
     }
+
 }
 
 /// Pressure value at a given location.

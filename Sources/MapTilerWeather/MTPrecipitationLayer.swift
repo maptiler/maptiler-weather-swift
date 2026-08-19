@@ -51,12 +51,13 @@ public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
             return nil
         }
 
-        if let value = dict["value"] as? Double {
+        if let value = dict.getDouble("value") {
             return MTPrecipitationValue(value: value)
         }
 
         return nil
     }
+
 }
 
 /// Precipitation value at a given location.

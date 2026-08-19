@@ -54,12 +54,13 @@ public class MTRadarLayer: MTWeatherLayer, @unchecked Sendable {
             return nil
         }
 
-        if let value = dict["value"] as? Double {
+        if let value = dict.getDouble("value") {
             return MTRadarValue(value: value)
         }
 
         return nil
     }
+
 }
 
 /// Radar reflectivity value at a given location.

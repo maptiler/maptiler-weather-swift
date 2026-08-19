@@ -45,6 +45,10 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     /// Whether this layer is displayed. Defaults to .visible.
     public var visibility: MTLayerVisibility? = .visible
 
+    /// The ID of an existing layer to insert this weather layer before.
+    /// If nil, the SDK will automatically attempt to place it below the first symbol (label) layer.
+    public var beforeId: String?
+
     /// Color ramp used to represent the weather data.
     public var colorRamp: MTWeatherColorRamp?
 
@@ -76,7 +80,7 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     public func addToMap(_ mapView: MTMapView) {
         self.mapView = mapView
         Task {
-            let command = AddWeatherLayerCommand(layer: self)
+            let command = AddWeatherLayerCommand(layer: self, beforeId: self.beforeId)
             _ = try? await mapView.execute(command: command)
         }
     }
@@ -201,5 +205,21 @@ extension MTWeatherLayer {
     public func minZoom(_ value: Double) -> Self {
         self.minZoom = value
         return self
+    }
+
+    /// Modifier. Sets the ``beforeId``.
+    @discardableResult
+    public func beforeId(_ value: String) -> Self {
+        self.beforeId = value
+        return self
+    }
+}
+
+extension Dictionary where Key == String, Value == Any {
+    func getDouble(_ key: String) -> Double? {
+        if let val = self[key] as? Double { return val }
+        if let val = self[key] as? Int { return Double(val) }
+        if let val = self[key] as? Float { return Double(val) }
+        return nil
     }
 }

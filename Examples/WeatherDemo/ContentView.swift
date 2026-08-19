@@ -13,6 +13,7 @@ enum WeatherLayerType: String, CaseIterable, Identifiable {
     case pressure = "Pressure"
     case radar = "Radar"
     case temperature = "Temperature"
+    case wind = "Wind"
 
     var id: String { self.rawValue }
 }
@@ -32,7 +33,7 @@ struct ContentView: View {
             MTMapViewContainer(map: mapView) {
                 // Map content goes here
             }
-            .referenceStyle(.dataviz)
+            .referenceStyle(.backdrop)
             .styleVariant(.light)
             .didTriggerEvent { event, data in
                 // Wait for the style to be loaded before adding weather layers
@@ -162,6 +163,8 @@ struct ContentView: View {
             newLayer = MTRadarLayer()
         case .temperature:
             newLayer = MTTemperatureLayer()
+        case .wind:
+            newLayer = MTWindLayer()
         }
 
         newLayer.addTo(mapView)
@@ -195,6 +198,11 @@ struct ContentView: View {
                         let res: MTTemperatureValue? = try await temperatureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
                         value = res.map { String(format: "%.1f °C", $0.value) }
                     }
+                case .wind:
+                    if let windLayer = layer as? MTWindLayer {
+                        let res: MTWindValue? = try await windLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                        value = res.map { String(format: "%.1f m/s %@", $0.speedMetersPerSecond, $0.compassDirection) }
+                    }
                 }
                 
                 let finalValue = value
@@ -208,6 +216,7 @@ struct ContentView: View {
                     }
                     if finalValue != nil {
                         let newMarker = MTMarker(coordinates: coordinate)
+                        newMarker.anchor = .bottom
                         mapView.addMarker(newMarker)
                         currentMarker = newMarker
                     }
@@ -224,6 +233,7 @@ struct ContentView: View {
         case .pressure: return "gauge.medium"
         case .radar: return "antenna.radiowaves.left.and.right"
         case .temperature: return "thermometer"
+        case .wind: return "wind"
         }
     }
 }

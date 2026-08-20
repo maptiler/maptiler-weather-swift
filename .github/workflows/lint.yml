@@ -1,0 +1,35 @@
+name: SwiftLint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Cache SwiftLint
+      uses: actions/cache@v4
+      with:
+        path: |
+          /opt/homebrew/Cellar/swiftlint
+          /usr/local/Cellar/swiftlint
+        key: swiftlint-${{ runner.os }}-v1
+        restore-keys: |
+          swiftlint-${{ runner.os }}-
+    - name: Install SwiftLint
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        if ! command -v swiftlint &> /dev/null; then
+          brew install swiftlint
+        fi
+    - name: Link SwiftLint
+      run: brew link swiftlint --force
+    - name: Run SwiftLint
+      run: swiftlint --strict

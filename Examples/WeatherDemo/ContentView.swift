@@ -14,16 +14,27 @@ enum WeatherLayerType: String, CaseIterable, Identifiable {
     case radar = "Radar"
     case temperature = "Temperature"
     case wind = "Wind"
+    case windAndTemp = "Wind & Temp"
 
     var id: String { self.rawValue }
 }
 
 struct ContentView: View {
     @State private var mapView = MTMapView()
-    @State private var selectedLayerType: WeatherLayerType = .precipitation
-    @State private var currentLayer: MTWeatherLayer?
+    @State private var selectedLayerType: WeatherLayerType = .windAndTemp
     
-    // State for picked weather data
+    // Layers
+    @State private var currentLayer: MTWeatherLayer?
+    @State private var secondaryLayer: MTWeatherLayer? // Used for the "Wind + Temperature" background
+    
+    // Animation State
+    @State private var isPlaying = false
+    @State private var timeSliderValue: Double = 0
+    @State private var minTime: Double = 0
+    @State private var maxTime: Double = 1
+    @State private var currentAnimationDate: Date?
+    
+    // Picked State
     @State private var pickedValue: String?
     @State private var pickedLocation: CLLocationCoordinate2D?
     @State private var currentMarker: MTMarker?
@@ -36,15 +47,16 @@ struct ContentView: View {
             .referenceStyle(.backdrop)
             .styleVariant(.light)
             .didTriggerEvent { event, data in
-                // Wait for the style to be loaded before adding weather layers
                 if event == .didLoad {
                     updateWeatherLayer(to: selectedLayerType)
                 } else if event == .didTap, let coordinate = data?.coordinate {
-                    pickWeather(at: coordinate)
+                    // For the combined view, we don't show the card popup on tap.
+                    if selectedLayerType != .windAndTemp {
+                        pickWeather(at: coordinate)
+                    }
                 }
             }
             .onAppear {
-                // Register the weather module to enable weather layers
                 mapView.registerModule(MapTilerWeatherModule())
             }
             .ignoresSafeArea()
@@ -83,23 +95,21 @@ struct ContentView: View {
             }
             .padding(.top, 16)
             
-            // Weather Data Card
+            // Pointer Data Card
             if let pickedValue = pickedValue, let pickedLocation = pickedLocation {
                 VStack {
-                    Spacer()
                     HStack(spacing: 15) {
                         Image(systemName: iconName(for: selectedLayerType))
                             .font(.title)
                             .foregroundColor(.blue)
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(selectedLayerType.rawValue)
+                            Text(selectedLayerType.rawValue.uppercased())
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(.secondary)
-                                .textCase(.uppercase)
                             Text(pickedValue)
-                                .font(.title3)
+                                .font(.headline)
                                 .fontWeight(.semibold)
                             Text(String(format: "%.4f, %.4f", pickedLocation.latitude, pickedLocation.longitude))
                                 .font(.caption2)
@@ -125,17 +135,59 @@ struct ContentView: View {
                     .padding()
                     .background(.thinMaterial)
                     .cornerRadius(20)
-                    .padding()
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal)
+                    .shadow(radius: 5)
+                    Spacer()
                 }
+                .padding(.top, 80)
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(.spring(), value: pickedValue)
+            }
+            
+            // Animation Controls (Bottom)
+            VStack {
+                Spacer()
+                VStack(spacing: 12) {
+                    if let date = currentAnimationDate {
+                        Text(date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.headline)
+                    } else {
+                        Text("Loading data...")
+                            .font(.headline)
+                    }
+                    
+                    HStack {
+                        Button(action: togglePlayPause) {
+                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                        }
+                        
+                        Slider(
+                            value: Binding(
+                                get: { timeSliderValue },
+                                set: { newValue in
+                                    timeSliderValue = newValue
+                                    seekAnimation(to: newValue)
+                                }
+                            ),
+                            in: minTime...maxTime
+                        )
+                    }
+                }
+                .padding()
+                .background(.regularMaterial)
+                .cornerRadius(16)
+                .padding()
+                .shadow(radius: 10)
             }
         }
         .onChange(of: selectedLayerType) { newType in
-            // Clear picked data when layer changes
             self.pickedValue = nil
             self.pickedLocation = nil
+            self.isPlaying = false
             if let existingMarker = currentMarker {
                 mapView.removeMarker(existingMarker)
                 currentMarker = nil
@@ -145,30 +197,141 @@ struct ContentView: View {
     }
 
     private func updateWeatherLayer(to type: WeatherLayerType) {
-        // Remove existing layer if any
-        if let existingLayer = currentLayer {
+        // Stop any running animations
+        currentLayer?.animateByFactor(0)
+        secondaryLayer?.animateByFactor(0)
+        
+        // Remove existing layers
+        if let existing = currentLayer {
+            Task { try? await mapView.style?.removeLayer(existing) }
+        }
+        if let existingSec = secondaryLayer {
+            Task { try? await mapView.style?.removeLayer(existingSec) }
+        }
+        
+        currentLayer = nil
+        secondaryLayer = nil
+
+        // Reset water style
+        if let style = mapView.style {
             Task {
-                try? await mapView.style?.removeLayer(existingLayer)
+                await style.setPaintProperty(layerId: "Water", name: "fill-color", value: .string("rgba(0, 0, 0, 0.0)"))
             }
         }
 
-        // Create and add new layer
-        let newLayer: MTWeatherLayer
         switch type {
         case .precipitation:
-            newLayer = MTPrecipitationLayer()
+            let newLayer = MTPrecipitationLayer()
+            setupEventBindings(for: newLayer)
+            newLayer.addTo(mapView)
+            currentLayer = newLayer
+            
         case .pressure:
-            newLayer = MTPressureLayer()
+            let newLayer = MTPressureLayer()
+            setupEventBindings(for: newLayer)
+            newLayer.addTo(mapView)
+            currentLayer = newLayer
+            
         case .radar:
-            newLayer = MTRadarLayer()
+            let newLayer = MTRadarLayer()
+            setupEventBindings(for: newLayer)
+            newLayer.addTo(mapView)
+            currentLayer = newLayer
+            
         case .temperature:
-            newLayer = MTTemperatureLayer()
+            let newLayer = MTTemperatureLayer()
+            setupEventBindings(for: newLayer)
+            newLayer.addTo(mapView)
+            currentLayer = newLayer
+            
         case .wind:
-            newLayer = MTWindLayer()
-        }
+            let newLayer = MTWindLayer()
+            setupEventBindings(for: newLayer)
+            newLayer.addTo(mapView)
+            currentLayer = newLayer
+            
+        case .windAndTemp:
+            if let style = mapView.style {
+                Task {
+                    await style.setPaintProperty(layerId: "Water", name: "fill-color", value: .string("rgba(0, 0, 0, 0.6)"))
+                }
+            }
 
-        newLayer.addTo(mapView)
-        currentLayer = newLayer
+            let tempLayer = MTTemperatureLayer(identifier: "Temperature Background")
+            tempLayer.opacity(0.8)
+            
+            let wind = MTWindLayer(identifier: "Wind Particles")
+            wind.colorRamp(MTWeatherColorRamp.none)
+                .speed(0.001)
+                .fadeFactor(0.03)
+                .maxAmount(256)
+                .density(200)
+                .color(MTRGBAColor(red: 0, green: 0, blue: 0, alpha: 30))
+                .fastColor(MTRGBAColor(red: 0, green: 0, blue: 0, alpha: 100))
+
+            setupEventBindings(for: wind)
+
+            tempLayer.beforeId("Water")
+            tempLayer.addTo(mapView)
+            wind.addTo(mapView)
+
+            currentLayer = wind
+            secondaryLayer = tempLayer
+        }
+    }
+    
+    private func setupEventBindings(for layer: MTWeatherLayer) {
+        layer.onSourceReady = {
+            Task { @MainActor in
+                if let start = try? await layer.getAnimationStart(),
+                   let end = try? await layer.getAnimationEnd(),
+                   let currentDate = try? await layer.getAnimationTimeDate(),
+                   let currentTime = try? await layer.getAnimationTime() {
+                    
+                    self.minTime = start
+                    self.maxTime = end
+                    self.timeSliderValue = currentTime
+                    self.currentAnimationDate = currentDate
+                }
+            }
+        }
+        
+        layer.onTick = { time in
+            Task { @MainActor in
+                self.timeSliderValue = time
+                self.currentAnimationDate = Date(timeIntervalSince1970: time)
+                
+                if let loc = self.pickedLocation, self.isPlaying {
+                    self.pickWeather(at: loc)
+                }
+            }
+        }
+        
+        layer.onAnimationTimeSet = { time in
+            Task { @MainActor in
+                self.timeSliderValue = time
+                self.currentAnimationDate = Date(timeIntervalSince1970: time)
+            }
+        }
+    }
+    
+    private func togglePlayPause() {
+        guard let layer = currentLayer else { return }
+        isPlaying.toggle()
+        
+        let speedMultiplier: Double = 14400 
+        if isPlaying {
+            layer.animateByFactor(speedMultiplier)
+            secondaryLayer?.animateByFactor(speedMultiplier)
+        } else {
+            layer.animateByFactor(0)
+            secondaryLayer?.animateByFactor(0)
+        }
+    }
+    
+    private func seekAnimation(to time: Double) {
+        currentLayer?.setAnimationTime(time)
+        secondaryLayer?.setAnimationTime(time)
     }
     
     private func pickWeather(at coordinate: CLLocationCoordinate2D) {
@@ -177,49 +340,64 @@ struct ContentView: View {
         Task {
             do {
                 var value: String? = nil
-                switch selectedLayerType {
-                case .precipitation:
-                    if let precipLayer = layer as? MTPrecipitationLayer {
-                        let res: MTPrecipitationValue? = try await precipLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
-                        value = res.map { String(format: "%.1f mm/h", $0.value) }
+                
+                if selectedLayerType == .windAndTemp {
+                    let windRes: MTWindValue? = try await (layer as? MTWindLayer)?.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                    let tempRes: MTTemperatureValue? = try await (secondaryLayer as? MTTemperatureLayer)?.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                    
+                    var valueStr = ""
+                    if let t = tempRes {
+                        valueStr += String(format: "%.1f °C", t.value)
                     }
-                case .pressure:
-                    if let pressureLayer = layer as? MTPressureLayer {
-                        let res: MTPressureValue? = try await pressureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
-                        value = res.map { String(format: "%.0f hPa", $0.value) }
+                    if let w = windRes {
+                        if !valueStr.isEmpty { valueStr += " \n " }
+                        valueStr += String(format: "%.1f km/h", w.speedKilometersPerHour)
                     }
-                case .radar:
-                    if let radarLayer = layer as? MTRadarLayer {
-                        let res: MTRadarValue? = try await radarLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
-                        value = res.map { String(format: "%.1f dBZ", $0.value) }
-                    }
-                case .temperature:
-                    if let temperatureLayer = layer as? MTTemperatureLayer {
-                        let res: MTTemperatureValue? = try await temperatureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
-                        value = res.map { String(format: "%.1f °C", $0.value) }
-                    }
-                case .wind:
-                    if let windLayer = layer as? MTWindLayer {
-                        let res: MTWindValue? = try await windLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
-                        value = res.map { String(format: "%.1f m/s %@", $0.speedMetersPerSecond, $0.compassDirection) }
+                    if !valueStr.isEmpty { value = valueStr }
+                } else {
+                    switch selectedLayerType {
+                    case .precipitation:
+                        if let precipLayer = layer as? MTPrecipitationLayer {
+                            let res: MTPrecipitationValue? = try await precipLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                            value = res.map { String(format: "%.1f mm/h", $0.value) }
+                        }
+                    case .pressure:
+                        if let pressureLayer = layer as? MTPressureLayer {
+                            let res: MTPressureValue? = try await pressureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                            value = res.map { String(format: "%.0f hPa", $0.value) }
+                        }
+                    case .radar:
+                        if let radarLayer = layer as? MTRadarLayer {
+                            let res: MTRadarValue? = try await radarLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                            value = res.map { String(format: "%.1f dBZ", $0.value) }
+                        }
+                    case .temperature:
+                        if let temperatureLayer = layer as? MTTemperatureLayer {
+                            let res: MTTemperatureValue? = try await temperatureLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                            value = res.map { String(format: "%.1f °C", $0.value) }
+                        }
+                    case .wind:
+                        if let windLayer = layer as? MTWindLayer {
+                            let res: MTWindValue? = try await windLayer.pickAt(lng: coordinate.longitude, lat: coordinate.latitude)
+                            value = res.map { String(format: "%.1f km/h", $0.speedKilometersPerHour) }
+                        }
+                    default: break
                     }
                 }
                 
-                let finalValue = value
+                let finalValue = value ?? "No data"
                 await MainActor.run {
                     self.pickedValue = finalValue
                     self.pickedLocation = coordinate
                     
-                    // Update marker
                     if let existingMarker = currentMarker {
                         mapView.removeMarker(existingMarker)
                     }
-                    if finalValue != nil {
-                        let newMarker = MTMarker(coordinates: coordinate)
-                        newMarker.anchor = .bottom
-                        mapView.addMarker(newMarker)
-                        currentMarker = newMarker
-                    }
+                    
+                    let newMarker = MTMarker(coordinates: coordinate)
+                    newMarker.anchor = .bottom
+                    mapView.addMarker(newMarker)
+                    currentMarker = newMarker
                 }
             } catch {
                 print("Failed to pick weather: \(error)")
@@ -234,6 +412,7 @@ struct ContentView: View {
         case .radar: return "antenna.radiowaves.left.and.right"
         case .temperature: return "thermometer"
         case .wind: return "wind"
+        case .windAndTemp: return "thermometer.and.liquid.waves"
         }
     }
 }

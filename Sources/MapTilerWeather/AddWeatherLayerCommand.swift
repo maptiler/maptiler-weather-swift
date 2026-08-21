@@ -27,27 +27,6 @@ internal struct AddWeatherLayerCommand: MTCommand {
             return ""
         }
 
-        let jsClassName = layer.jsClassName
-        let beforeIdCode = beforeId != nil ? "'\(beforeId!)'" : """
-        (function() {
-            if (map.getLayer('Water')) return 'Water';
-            if (map.getLayer('water')) return 'water';
-            var layers = map.getStyle().layers;
-            for (var i = 0; i < layers.length; i++) {
-                var id = layers[i].id.toLowerCase();
-                if (id.indexOf('boundary') !== -1 || id.indexOf('border') !== -1) {
-                    return layers[i].id;
-                }
-            }
-            for (var i = 0; i < layers.length; i++) {
-                if (layers[i].type === 'symbol') {
-                    return layers[i].id;
-                }
-            }
-            return undefined;
-        })()
-        """
-
         return """
         (function() {
             function tryAddLayer(retries) {
@@ -75,7 +54,7 @@ internal struct AddWeatherLayerCommand: MTCommand {
                 delete options.source;
                 delete options.visibility;
 
-                var before = \(beforeIdCode);
+                var before = \(beforeIdJS);
 
                 // Adjust water opacity if inserting below water
                 if (before === 'Water' || before === 'water') {
@@ -86,10 +65,61 @@ internal struct AddWeatherLayerCommand: MTCommand {
                     }
                 }
 
-                map.addLayer(new weatherNS.\(jsClassName)(options), before);
+                var layer = new weatherNS.\(layer.jsClassName)(options);
+                \(eventListenersJS)
+                map.addLayer(layer, before);
             }
             tryAddLayer(10);
         })();
+        """
+    }
+
+    private var beforeIdJS: String {
+        if let beforeId = beforeId {
+            return "'\(beforeId)'"
+        }
+        return """
+        (function() {
+            if (map.getLayer('Water')) return 'Water';
+            if (map.getLayer('water')) return 'water';
+            var layers = map.getStyle().layers;
+            for (var i = 0; i < layers.length; i++) {
+                var id = layers[i].id.toLowerCase();
+                if (id.indexOf('boundary') !== -1 || id.indexOf('border') !== -1) {
+                    return layers[i].id;
+                }
+            }
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol') {
+                    return layers[i].id;
+                }
+            }
+            return undefined;
+        })()
+        """
+    }
+
+    private var eventListenersJS: String {
+        """
+        var events = ['sourceReady', 'playAnimation', 'pauseAnimation', 'tick', 'animationTimeSet'];
+        events.forEach(function(eventName) {
+            layer.on(eventName, function(e) {
+                if (window.webkit &&
+                    window.webkit.messageHandlers &&
+                    window.webkit.messageHandlers.moduleHandler) {
+                    var data = { layerId: "\(layer.identifier)" };
+                    if (e && e.time !== undefined) {
+                        data.time = e.time;
+                    }
+                    var payload = JSON.stringify({
+                        moduleId: "maptiler-weather",
+                        event: eventName,
+                        data: data
+                    });
+                    window.webkit.messageHandlers.moduleHandler.postMessage(payload);
+                }
+            });
+        });
         """
     }
 }

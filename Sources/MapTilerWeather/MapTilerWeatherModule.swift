@@ -70,7 +70,15 @@ public class MapTilerWeatherModule: MTMapModule {
     }
 
     public func onMessageReceived(_ event: String, with data: [String: Any]?) {
-        // Handle incoming messages from the JS weather module if needed in the future
+        guard let layerId = data?["layerId"] as? String else { return }
+
+        // Find the layer and route the event
+        Task { @MainActor in
+            let targetLayers = MTWeatherLayer.activeLayers.allObjects.filter { $0.identifier == layerId }
+            for layer in targetLayers {
+                layer.handleEvent(event, data: data)
+            }
+        }
     }
 
     private func injectDependencies(into mapView: MTMapView) async throws {

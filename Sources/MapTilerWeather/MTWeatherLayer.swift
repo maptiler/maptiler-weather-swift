@@ -58,6 +58,30 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     /// Weak reference to the map view this layer is added to.
     internal weak var mapView: MTMapView?
 
+    /// Active layers tracking for event routing
+    @MainActor
+    internal static var activeLayers = NSHashTable<MTWeatherLayer>.weakObjects()
+
+    // MARK: - Events
+
+    /// Called only once after the layer has been added to the map,
+    /// when all the necessary weather data source are loaded and ready to be used.
+    public var onSourceReady: (() -> Void)?
+
+    /// Called when the animation is starting to play or plays after having been on pause
+    /// after calling `.animate(...)`. Provides the timestamp in seconds.
+    public var onPlayAnimation: ((Double) -> Void)?
+
+    /// Called when the animation is being paused after calling `.animate(0)`. Provides the timestamp in seconds.
+    public var onPauseAnimation: ((Double) -> Void)?
+
+    /// Called for each animation update, possibly many times per second. Provides the timestamp in seconds.
+    public var onTick: ((Double) -> Void)?
+
+    /// Called when the progress time of the animation is manually set with
+    /// `.setAnimationTime(...)`. Provides the timestamp in seconds.
+    public var onAnimationTimeSet: ((Double) -> Void)?
+
     open var jsClassName: String {
         return "WeatherLayer"
     }
@@ -66,6 +90,34 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     public init(identifier: String, sourceIdentifier: String = "") {
         self.identifier = identifier
         self.sourceIdentifier = sourceIdentifier
+        Task { @MainActor in
+            Self.activeLayers.add(self)
+        }
+    }
+
+    internal func handleEvent(_ event: String, data: [String: Any]?) {
+        switch event {
+        case "sourceReady":
+            self.onSourceReady?()
+        case "playAnimation":
+            if let time = data?["time"] as? Double {
+                self.onPlayAnimation?(time)
+            }
+        case "pauseAnimation":
+            if let time = data?["time"] as? Double {
+                self.onPauseAnimation?(time)
+            }
+        case "tick":
+            if let time = data?["time"] as? Double {
+                self.onTick?(time)
+            }
+        case "animationTimeSet":
+            if let time = data?["time"] as? Double {
+                self.onAnimationTimeSet?(time)
+            }
+        default:
+            break
+        }
     }
 
     /// Adds the weather layer to the map.
@@ -106,6 +158,132 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
     }
 
+    // MARK: - Animation & Methods
+
+    /// Changes the global opacity of the layer
+    public func setOpacity(_ opacity: Double) {
+        self.opacity = opacity
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "setOpacity",
+                arguments: [.double(opacity)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    /// Change the visualization to a specific time. Does not stop animation.
+    public func setAnimationTime(_ time: Double) {
+        self.time = Date(timeIntervalSince1970: time)
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "setAnimationTime",
+                arguments: [.double(time)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    /// Change the visualization to a specific time date. Does not stop animation.
+    public func setAnimationTime(_ date: Date) {
+        setAnimationTime(date.timeIntervalSince1970)
+    }
+
+    /// Changes the speed of the animation. 0 to stop.
+    /// The speed is in number of real world milliseconds per animation second.
+    public func animate(timePerSecond: Double) {
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "animate",
+                arguments: [.double(timePerSecond)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    /// Animate by a factor of real life speed. 0 to stop.
+    public func animateByFactor(_ factor: Double) {
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "animateByFactor",
+                arguments: [.double(factor)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    private func getDoubleValue(for methodName: String) async throws -> Double? {
+        guard let mapView = self.mapView else { return nil }
+        let command = WeatherLayerValueCommand(layerId: self.identifier, methodName: methodName)
+        let result = try await mapView.execute(command: command)
+        if case .double(let value) = result {
+            return value
+        }
+        return nil
+    }
+
+    private func getDateValue(for methodName: String) async throws -> Date? {
+        if let timestamp = try await getDoubleValue(for: methodName) {
+            if timestamp.isInfinite || timestamp.isNaN { return nil }
+            return Date(timeIntervalSince1970: timestamp)
+        }
+        return nil
+    }
+
+    /// Get the time of the first TimeFrame (always the begining of the animation) as a UNIX timestamp in seconds.
+    public func getAnimationStart() async throws -> Double? {
+        return try await getDoubleValue(for: "getAnimationStart")
+    }
+
+    /// Get the start date of the animated sequence
+    public func getAnimationStartDate() async throws -> Date? {
+        return try await getDateValue(for: "getAnimationStart")
+    }
+
+    /// Get the end time of the animation as a UNIX timestamp in seconds.
+    public func getAnimationEnd() async throws -> Double? {
+        return try await getDoubleValue(for: "getAnimationEnd")
+    }
+
+    /// Get the end date of the animated sequence
+    public func getAnimationEndDate() async throws -> Date? {
+        return try await getDateValue(for: "getAnimationEnd")
+    }
+
+    /// Get the current time of the animation as a UNIX timestamp in seconds.
+    public func getAnimationTime() async throws -> Double? {
+        return try await getDoubleValue(for: "getAnimationTime")
+    }
+
+    /// Get the current time of the animated sequence
+    public func getAnimationTimeDate() async throws -> Date? {
+        return try await getDateValue(for: "getAnimationTime")
+    }
+
+    /// Get the animation speed factor
+    public func getAnimationSpeed() async throws -> Double? {
+        return try await getDoubleValue(for: "getAnimationSpeed")
+    }
+
+    /// Tells whether the animation is currently playing
+    public func isPlaying() async throws -> Bool? {
+        guard let mapView = self.mapView else { return nil }
+        let command = WeatherLayerValueCommand(layerId: self.identifier, methodName: "isPlaying")
+        let result = try await mapView.execute(command: command)
+        if case .bool(let value) = result {
+            return value
+        }
+        return nil
+    }
+
     // MARK: - Codable
 
     enum CodingKeys: String, CodingKey {
@@ -136,6 +314,9 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
 
         if let visibilityRaw = try container.decodeIfPresent(String.self, forKey: .visibility) {
             visibility = MTLayerVisibility(rawValue: visibilityRaw)
+        }
+        Task { @MainActor in
+            Self.activeLayers.add(self)
         }
     }
 

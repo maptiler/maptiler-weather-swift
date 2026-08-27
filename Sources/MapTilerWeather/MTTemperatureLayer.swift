@@ -14,7 +14,7 @@ import MapTilerSDK
 ///
 /// The TemperatureLayer shows the atmospheric temperature in centigrade (degree Celcius (°C)).
 /// Forecast for temperatures at 2 m above ground.
-public class MTTemperatureLayer: MTWeatherLayer, @unchecked Sendable {
+public class MTTemperatureLayer: MTIntensityLayer, @unchecked Sendable {
     override public var jsClassName: String {
         return "TemperatureLayer"
     }
@@ -50,7 +50,8 @@ public class MTTemperatureLayer: MTWeatherLayer, @unchecked Sendable {
     ///   - lat: Latitude.
     /// - Returns: Temperature value, or nil if not available.
     public func pickAt(lng: Double, lat: Double) async throws -> MTTemperatureValue? {
-        guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
+        let result: [String: Any]? = try await super.pickAt(lng: lng, lat: lat)
+        guard let dict = result else {
             return nil
         }
 

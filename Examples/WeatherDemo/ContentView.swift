@@ -34,6 +34,10 @@ struct ContentView: View {
     @State private var maxTime: Double = 1
     @State private var currentAnimationDate: Date?
     
+    // Layer Settings State
+    @State private var repaintOnPaused: Bool = true
+    @State private var timeInterpolation: Bool = true
+    
     // Picked State
     @State private var pickedValue: String?
     @State private var pickedLocation: CLLocationCoordinate2D?
@@ -61,8 +65,8 @@ struct ContentView: View {
             }
             .ignoresSafeArea()
 
-            // Layer Picker
-            VStack {
+            // Layer Picker & Settings
+            HStack(alignment: .top, spacing: 16) {
                 Menu {
                     Picker("Weather Layer", selection: $selectedLayerType) {
                         ForEach(WeatherLayerType.allCases) { layerType in
@@ -91,6 +95,18 @@ struct ContentView: View {
                     .background(.regularMaterial)
                     .cornerRadius(12)
                     .shadow(color: .black.opacity(0.15), radius: 5, x: 0, y: 2)
+                }
+
+                Menu {
+                    Toggle("Repaint While Paused", isOn: $repaintOnPaused)
+                    Toggle("Time Interpolation", isOn: $timeInterpolation)
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundColor(.blue)
+                        .padding()
+                        .background(.regularMaterial)
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.15), radius: 5, x: 0, y: 2)
                 }
             }
             .padding(.top, 16)
@@ -194,6 +210,14 @@ struct ContentView: View {
             }
             updateWeatherLayer(to: newType)
         }
+        .onChange(of: repaintOnPaused) { newValue in
+            currentLayer?.setRepaintOnPausedAnimation(newValue)
+            secondaryLayer?.setRepaintOnPausedAnimation(newValue)
+        }
+        .onChange(of: timeInterpolation) { newValue in
+            currentLayer?.setTimeInterpolation(newValue)
+            secondaryLayer?.setTimeInterpolation(newValue)
+        }
     }
 
     private func updateWeatherLayer(to type: WeatherLayerType) {
@@ -222,30 +246,40 @@ struct ContentView: View {
         switch type {
         case .precipitation:
             let newLayer = MTPrecipitationLayer()
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)
             newLayer.addTo(mapView)
             currentLayer = newLayer
             
         case .pressure:
             let newLayer = MTPressureLayer()
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)
             newLayer.addTo(mapView)
             currentLayer = newLayer
             
         case .radar:
             let newLayer = MTRadarLayer()
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)
             newLayer.addTo(mapView)
             currentLayer = newLayer
             
         case .temperature:
             let newLayer = MTTemperatureLayer()
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)
             newLayer.addTo(mapView)
             currentLayer = newLayer
             
         case .wind:
             let newLayer = MTWindLayer()
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)
             newLayer.addTo(mapView)
             currentLayer = newLayer
@@ -259,6 +293,8 @@ struct ContentView: View {
 
             let tempLayer = MTTemperatureLayer(identifier: "Temperature Background")
             tempLayer.opacity(0.8)
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
             
             let wind = MTWindLayer(identifier: "Wind Particles")
             wind.colorRamp(MTWeatherColorRamp.none)
@@ -268,6 +304,8 @@ struct ContentView: View {
                 .density(200)
                 .color(MTRGBAColor(red: 0, green: 0, blue: 0, alpha: 30))
                 .fastColor(MTRGBAColor(red: 0, green: 0, blue: 0, alpha: 100))
+                .repaintOnPausedAnimation(repaintOnPaused)
+                .timeInterpolation(timeInterpolation)
 
             setupEventBindings(for: wind)
 

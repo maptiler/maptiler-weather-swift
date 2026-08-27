@@ -48,7 +48,7 @@ public class MTColoringFragment: @unchecked Sendable, Codable {
 }
 
 /// A coloring fragment that uses a color gradient.
-public final class MTGradientColoringFragment: MTColoringFragment {
+public final class MTGradientColoringFragment: MTColoringFragment, @unchecked Sendable {
     /// Decoder options for reading raw data.
     public var decode: MTDecoderOptions
 

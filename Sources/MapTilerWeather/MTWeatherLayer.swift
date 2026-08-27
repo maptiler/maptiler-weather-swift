@@ -155,6 +155,31 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
     }
 
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(identifier, forKey: .identifier)
+        try container.encode(type, forKey: .type)
+        try container.encode(sourceIdentifier, forKey: .source)
+        try container.encodeIfPresent(maxZoom, forKey: .maxZoom)
+        try container.encodeIfPresent(minZoom, forKey: .minZoom)
+        try container.encodeIfPresent(sourceLayer, forKey: .sourceLayer)
+
+        try container.encodeIfPresent(opacity, forKey: .opacity)
+        try container.encodeIfPresent(smooth, forKey: .smooth)
+        try container.encodeIfPresent(repaintOnPausedAnimation, forKey: .repaintOnPausedAnimation)
+        try container.encodeIfPresent(timeInterpolation, forKey: .timeInterpolation)
+        try container.encodeIfPresent(localSmoothing, forKey: .localSmoothing)
+        try container.encodeIfPresent(nbSmoothingBins, forKey: .nbSmoothingBins)
+        try container.encodeIfPresent(maxSmoothingDistance, forKey: .maxSmoothingDistance)
+        try container.encodeIfPresent(smoothingDistanceDecayFactor, forKey: .smoothingDistanceDecayFactor)
+        try container.encodeIfPresent(loadLowerZoomLevels, forKey: .loadLowerZoomLevels)
+        try container.encodeIfPresent(renderTransparentArea, forKey: .renderTransparentArea)
+
+        try container.encodeIfPresent(colorRamp, forKey: .colorRamp)
+        try container.encodeIfPresent(coloring, forKey: .coloring)
+        try container.encodeIfPresent(visibility?.rawValue, forKey: .visibility)
+    }
+
     enum CodingKeys: String, CodingKey {
         case identifier = "id"
         case type
@@ -418,31 +443,6 @@ extension MTWeatherLayer {
 // MARK: - Codable extension
 
 extension MTWeatherLayer {
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(identifier, forKey: .identifier)
-        try container.encode(type, forKey: .type)
-        try container.encode(sourceIdentifier, forKey: .source)
-        try container.encodeIfPresent(maxZoom, forKey: .maxZoom)
-        try container.encodeIfPresent(minZoom, forKey: .minZoom)
-        try container.encodeIfPresent(sourceLayer, forKey: .sourceLayer)
-
-        try container.encodeIfPresent(opacity, forKey: .opacity)
-        try container.encodeIfPresent(smooth, forKey: .smooth)
-        try container.encodeIfPresent(repaintOnPausedAnimation, forKey: .repaintOnPausedAnimation)
-        try container.encodeIfPresent(timeInterpolation, forKey: .timeInterpolation)
-        try container.encodeIfPresent(localSmoothing, forKey: .localSmoothing)
-        try container.encodeIfPresent(nbSmoothingBins, forKey: .nbSmoothingBins)
-        try container.encodeIfPresent(maxSmoothingDistance, forKey: .maxSmoothingDistance)
-        try container.encodeIfPresent(smoothingDistanceDecayFactor, forKey: .smoothingDistanceDecayFactor)
-        try container.encodeIfPresent(loadLowerZoomLevels, forKey: .loadLowerZoomLevels)
-        try container.encodeIfPresent(renderTransparentArea, forKey: .renderTransparentArea)
-
-        try container.encodeIfPresent(colorRamp, forKey: .colorRamp)
-        try container.encodeIfPresent(coloring, forKey: .coloring)
-        try container.encodeIfPresent(visibility?.rawValue, forKey: .visibility)
-    }
-
 }
 
 // MARK: - DSL Modifiers

@@ -14,7 +14,7 @@ import MapTilerSDK
 ///
 /// The RadarLayer shows the atmospheric radar reflectivity in radar reflectivity factor (dBZ).
 /// Forecast for maximum composite radar reflectivity value.
-public class MTRadarLayer: MTWeatherLayer, @unchecked Sendable {
+public class MTRadarLayer: MTIntensityLayer, @unchecked Sendable {
     override public var jsClassName: String {
         return "RadarLayer"
     }
@@ -50,7 +50,8 @@ public class MTRadarLayer: MTWeatherLayer, @unchecked Sendable {
     ///   - lat: Latitude.
     /// - Returns: Radar reflectivity value in dBZ, or nil if not available.
     public func pickAt(lng: Double, lat: Double) async throws -> MTRadarValue? {
-        guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
+        let result: [String: Any]? = try await super.pickAt(lng: lng, lat: lat)
+        guard let dict = result else {
             return nil
         }
 

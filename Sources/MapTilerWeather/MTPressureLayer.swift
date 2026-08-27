@@ -14,7 +14,7 @@ import MapTilerSDK
 ///
 /// The PressureLayer shows the atmospheric pressure in millibar (mbar) or hectopascal (hPa).
 /// Forecast for air pressure at mean sea level.
-public class MTPressureLayer: MTWeatherLayer, @unchecked Sendable {
+public class MTPressureLayer: MTIntensityLayer, @unchecked Sendable {
     override public var jsClassName: String {
         return "PressureLayer"
     }
@@ -50,7 +50,8 @@ public class MTPressureLayer: MTWeatherLayer, @unchecked Sendable {
     ///   - lat: Latitude.
     /// - Returns: Pressure value in hPa (mbar), or nil if not available.
     public func pickAt(lng: Double, lat: Double) async throws -> MTPressureValue? {
-        guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
+        let result: [String: Any]? = try await super.pickAt(lng: lng, lat: lat)
+        guard let dict = result else {
             return nil
         }
 

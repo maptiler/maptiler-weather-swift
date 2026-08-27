@@ -11,7 +11,7 @@ import Foundation
 import MapTilerSDK
 
 /// A layer that displays precipitation data.
-public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
+public class MTPrecipitationLayer: MTIntensityLayer, @unchecked Sendable {
     override public var jsClassName: String {
         return "PrecipitationLayer"
     }
@@ -47,7 +47,8 @@ public class MTPrecipitationLayer: MTWeatherLayer, @unchecked Sendable {
     ///   - lat: Latitude.
     /// - Returns: Precipitation value in mm/h, or nil if not available.
     public func pickAt(lng: Double, lat: Double) async throws -> MTPrecipitationValue? {
-        guard let dict = try await super.pickAt(lng: lng, lat: lat) else {
+        let result: [String: Any]? = try await super.pickAt(lng: lng, lat: lat)
+        guard let dict = result else {
             return nil
         }
 

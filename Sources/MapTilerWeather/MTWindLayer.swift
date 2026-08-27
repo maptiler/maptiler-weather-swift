@@ -14,7 +14,7 @@ import MapTilerSDK
 ///
 /// The WindLayer shows the atmospheric wind speed in meter per second (m/s).
 /// Forecast for speed and direction at an altitude of 10 m above ground.
-public class MTWindLayer: MTWeatherLayer, @unchecked Sendable {
+public class MTWindLayer: MTTileLayer, @unchecked Sendable {
     override public var jsClassName: String {
         return "WindLayer"
     }

@@ -42,6 +42,31 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
     /// Whether or not the colorramp must be smooth. Defaults to true.
     public var smooth: Bool? = true
 
+    /// Determining if map.triggerRepaint() is called when the animation is paused.
+    /// Defaults to true.
+    public var repaintOnPausedAnimation: Bool? = true
+
+    /// Whether or not to use time interpolation. Defaults to true.
+    public var timeInterpolation: Bool? = true
+
+    /// Whether or not to use local smoothing. Defaults to true.
+    public var localSmoothing: Bool? = true
+
+    /// Number of smoothing bins.
+    public var nbSmoothingBins: Int?
+
+    /// Maximum smoothing distance.
+    public var maxSmoothingDistance: Double?
+
+    /// Smoothing distance decay factor.
+    public var smoothingDistanceDecayFactor: Double?
+
+    /// Whether or not to load lower zoom levels.
+    public var loadLowerZoomLevels: Bool?
+
+    /// Whether or not to render transparent area.
+    public var renderTransparentArea: Bool?
+
     /// Whether this layer is displayed. Defaults to .visible.
     public var visibility: MTLayerVisibility? = .visible
 
@@ -51,6 +76,10 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
 
     /// Color ramp used to represent the weather data.
     public var colorRamp: MTWeatherColorRamp?
+
+    /// Coloring fragment used to represent the weather data.
+    /// This is a more advanced way to specify coloring, including the data decoder.
+    public var coloring: MTColoringFragment?
 
     /// Time for which to display the weather data.
     public var time: Date?
@@ -95,6 +124,63 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
     }
 
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        identifier = try container.decode(String.self, forKey: .identifier)
+        type = try container.decode(MTLayerType.self, forKey: .type)
+        sourceIdentifier = try container.decode(String.self, forKey: .source)
+        maxZoom = try container.decodeIfPresent(Double.self, forKey: .maxZoom)
+        minZoom = try container.decodeIfPresent(Double.self, forKey: .minZoom)
+        sourceLayer = try container.decodeIfPresent(String.self, forKey: .sourceLayer)
+
+        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity)
+        smooth = try container.decodeIfPresent(Bool.self, forKey: .smooth)
+        repaintOnPausedAnimation = try container.decodeIfPresent(Bool.self, forKey: .repaintOnPausedAnimation)
+        timeInterpolation = try container.decodeIfPresent(Bool.self, forKey: .timeInterpolation)
+        localSmoothing = try container.decodeIfPresent(Bool.self, forKey: .localSmoothing)
+        nbSmoothingBins = try container.decodeIfPresent(Int.self, forKey: .nbSmoothingBins)
+        maxSmoothingDistance = try container.decodeIfPresent(Double.self, forKey: .maxSmoothingDistance)
+        smoothingDistanceDecayFactor = try container.decodeIfPresent(Double.self, forKey: .smoothingDistanceDecayFactor)
+        loadLowerZoomLevels = try container.decodeIfPresent(Bool.self, forKey: .loadLowerZoomLevels)
+        renderTransparentArea = try container.decodeIfPresent(Bool.self, forKey: .renderTransparentArea)
+
+        colorRamp = try container.decodeIfPresent(MTWeatherColorRamp.self, forKey: .colorRamp)
+        coloring = try container.decodeIfPresent(MTGradientColoringFragment.self, forKey: .coloring)
+
+        if let visibilityRaw = try container.decodeIfPresent(String.self, forKey: .visibility) {
+            visibility = MTLayerVisibility(rawValue: visibilityRaw)
+        }
+        Task { @MainActor in
+            Self.activeLayers.add(self)
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case identifier = "id"
+        case type
+        case source = "source"
+        case maxZoom = "maxzoom"
+        case minZoom = "minzoom"
+        case sourceLayer = "source-layer"
+        case opacity
+        case smooth
+        case repaintOnPausedAnimation
+        case timeInterpolation
+        case localSmoothing
+        case nbSmoothingBins
+        case maxSmoothingDistance
+        case smoothingDistanceDecayFactor
+        case loadLowerZoomLevels
+        case renderTransparentArea
+        case colorRamp = "colorramp"
+        case coloring
+        case visibility
+    }
+}
+
+// MARK: - Map & Events
+
+extension MTWeatherLayer {
     internal func handleEvent(_ event: String, data: [String: Any]?) {
         switch event {
         case "sourceReady":
@@ -157,9 +243,11 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
             return nil
         }
     }
+}
 
-    // MARK: - Animation & Methods
+// MARK: - Animation & Methods
 
+extension MTWeatherLayer {
     /// Changes the global opacity of the layer
     public func setOpacity(_ opacity: Double) {
         self.opacity = opacity
@@ -273,6 +361,48 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         return try await getDoubleValue(for: "getAnimationSpeed")
     }
 
+    /// Determining if map.triggerRepaint() is called when the animation is paused.
+    public func setRepaintOnPausedAnimation(_ enabled: Bool) {
+        self.repaintOnPausedAnimation = enabled
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "setRepaintOnPausedAnimation",
+                arguments: [.bool(enabled)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    /// Toggles data interpolation between keyframes.
+    public func setTimeInterpolation(_ enabled: Bool) {
+        self.timeInterpolation = enabled
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "setTimeInterpolation",
+                arguments: [.bool(enabled)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
+    /// Toggles data smoothing.
+    public func setLocalSmoothing(_ enabled: Bool) {
+        self.localSmoothing = enabled
+        guard let mapView = self.mapView else { return }
+        Task {
+            let command = WeatherLayerMethodCommand(
+                layerId: self.identifier,
+                methodName: "setLocalSmoothing",
+                arguments: [.bool(enabled)]
+            )
+            _ = try? await mapView.execute(command: command)
+        }
+    }
+
     /// Tells whether the animation is currently playing
     public func isPlaying() async throws -> Bool? {
         guard let mapView = self.mapView else { return nil }
@@ -283,43 +413,11 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
         }
         return nil
     }
+}
 
-    // MARK: - Codable
+// MARK: - Codable extension
 
-    enum CodingKeys: String, CodingKey {
-        case identifier = "id"
-        case type
-        case source = "source"
-        case maxZoom = "maxzoom"
-        case minZoom = "minzoom"
-        case sourceLayer = "source-layer"
-        case opacity
-        case smooth
-        case colorRamp = "colorramp"
-        case visibility
-    }
-
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        identifier = try container.decode(String.self, forKey: .identifier)
-        type = try container.decode(MTLayerType.self, forKey: .type)
-        sourceIdentifier = try container.decode(String.self, forKey: .source)
-        maxZoom = try container.decodeIfPresent(Double.self, forKey: .maxZoom)
-        minZoom = try container.decodeIfPresent(Double.self, forKey: .minZoom)
-        sourceLayer = try container.decodeIfPresent(String.self, forKey: .sourceLayer)
-
-        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity)
-        smooth = try container.decodeIfPresent(Bool.self, forKey: .smooth)
-        colorRamp = try container.decodeIfPresent(MTWeatherColorRamp.self, forKey: .colorRamp)
-
-        if let visibilityRaw = try container.decodeIfPresent(String.self, forKey: .visibility) {
-            visibility = MTLayerVisibility(rawValue: visibilityRaw)
-        }
-        Task { @MainActor in
-            Self.activeLayers.add(self)
-        }
-    }
-
+extension MTWeatherLayer {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(identifier, forKey: .identifier)
@@ -331,9 +429,20 @@ public class MTWeatherLayer: MTLayer, @unchecked Sendable, Codable {
 
         try container.encodeIfPresent(opacity, forKey: .opacity)
         try container.encodeIfPresent(smooth, forKey: .smooth)
+        try container.encodeIfPresent(repaintOnPausedAnimation, forKey: .repaintOnPausedAnimation)
+        try container.encodeIfPresent(timeInterpolation, forKey: .timeInterpolation)
+        try container.encodeIfPresent(localSmoothing, forKey: .localSmoothing)
+        try container.encodeIfPresent(nbSmoothingBins, forKey: .nbSmoothingBins)
+        try container.encodeIfPresent(maxSmoothingDistance, forKey: .maxSmoothingDistance)
+        try container.encodeIfPresent(smoothingDistanceDecayFactor, forKey: .smoothingDistanceDecayFactor)
+        try container.encodeIfPresent(loadLowerZoomLevels, forKey: .loadLowerZoomLevels)
+        try container.encodeIfPresent(renderTransparentArea, forKey: .renderTransparentArea)
+
         try container.encodeIfPresent(colorRamp, forKey: .colorRamp)
+        try container.encodeIfPresent(coloring, forKey: .coloring)
         try container.encodeIfPresent(visibility?.rawValue, forKey: .visibility)
     }
+
 }
 
 // MARK: - DSL Modifiers
@@ -353,6 +462,62 @@ extension MTWeatherLayer {
         return self
     }
 
+    /// Modifier. Sets the ``repaintOnPausedAnimation``.
+    @discardableResult
+    public func repaintOnPausedAnimation(_ value: Bool) -> Self {
+        self.repaintOnPausedAnimation = value
+        return self
+    }
+
+    /// Modifier. Sets the ``timeInterpolation``.
+    @discardableResult
+    public func timeInterpolation(_ value: Bool) -> Self {
+        self.timeInterpolation = value
+        return self
+    }
+
+    /// Modifier. Sets the ``localSmoothing``.
+    @discardableResult
+    public func localSmoothing(_ value: Bool) -> Self {
+        self.localSmoothing = value
+        return self
+    }
+
+    /// Modifier. Sets the ``nbSmoothingBins``.
+    @discardableResult
+    public func nbSmoothingBins(_ value: Int) -> Self {
+        self.nbSmoothingBins = value
+        return self
+    }
+
+    /// Modifier. Sets the ``maxSmoothingDistance``.
+    @discardableResult
+    public func maxSmoothingDistance(_ value: Double) -> Self {
+        self.maxSmoothingDistance = value
+        return self
+    }
+
+    /// Modifier. Sets the ``smoothingDistanceDecayFactor``.
+    @discardableResult
+    public func smoothingDistanceDecayFactor(_ value: Double) -> Self {
+        self.smoothingDistanceDecayFactor = value
+        return self
+    }
+
+    /// Modifier. Sets the ``loadLowerZoomLevels``.
+    @discardableResult
+    public func loadLowerZoomLevels(_ value: Bool) -> Self {
+        self.loadLowerZoomLevels = value
+        return self
+    }
+
+    /// Modifier. Sets the ``renderTransparentArea``.
+    @discardableResult
+    public func renderTransparentArea(_ value: Bool) -> Self {
+        self.renderTransparentArea = value
+        return self
+    }
+
     /// Modifier. Sets the ``visibility``.
     @discardableResult
     public func visibility(_ value: MTLayerVisibility) -> Self {
@@ -364,6 +529,13 @@ extension MTWeatherLayer {
     @discardableResult
     public func colorRamp(_ value: MTWeatherColorRamp) -> Self {
         self.colorRamp = value
+        return self
+    }
+
+    /// Modifier. Sets the ``coloring``.
+    @discardableResult
+    public func coloring(_ value: MTColoringFragment) -> Self {
+        self.coloring = value
         return self
     }
 

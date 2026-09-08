@@ -22,6 +22,7 @@ enum WeatherLayerType: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @State private var mapView = MTMapView()
     @State private var selectedLayerType: WeatherLayerType = .windAndTemp
+    @State private var particleSize: Double = 1.5
     
     // Layers
     @State private var currentLayer: MTWeatherLayer?
@@ -163,6 +164,30 @@ struct ContentView: View {
             // Animation Controls (Bottom)
             VStack {
                 Spacer()
+                
+                if selectedLayerType == .wind {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Particle Size")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Slider(value: $particleSize, in: 0.1...5.0)
+                                .accentColor(.blue)
+                            
+                            Text(String(format: "%.1f", particleSize))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(width: 35)
+                        }
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(16)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                }
+
                 VStack(spacing: 12) {
                     if let date = currentAnimationDate {
                         Text(date.formatted(date: .abbreviated, time: .shortened))
@@ -217,6 +242,14 @@ struct ContentView: View {
         .onChange(of: timeInterpolation) { newValue in
             currentLayer?.setTimeInterpolation(newValue)
             secondaryLayer?.setTimeInterpolation(newValue)
+        }
+        .onChange(of: particleSize) { newValue in
+            if let particleLayer = currentLayer as? MTParticleLayer {
+                particleLayer.size = newValue
+                Task {
+                    try? await particleLayer.updateParticleOptions()
+                }
+            }
         }
     }
 
@@ -278,6 +311,7 @@ struct ContentView: View {
             
         case .wind:
             let newLayer = MTWindLayer()
+                .size(particleSize)
                 .repaintOnPausedAnimation(repaintOnPaused)
                 .timeInterpolation(timeInterpolation)
             setupEventBindings(for: newLayer)

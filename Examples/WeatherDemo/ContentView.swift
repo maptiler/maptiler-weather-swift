@@ -173,7 +173,7 @@ struct ContentView: View {
                             .foregroundColor(.secondary)
                         
                         HStack(spacing: 10) {
-                            ForEach([(1.0, "Small"), (3.0, "Medium"), (5.0, "Large")], id: \.0) { size, label in
+                            ForEach([(2.0, "Small"), (3.0, "Medium"), (5.0, "Large")], id: \.0) { size, label in
                                 Button(action: {
                                     particleSize = size
                                 }) {

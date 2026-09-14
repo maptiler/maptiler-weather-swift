@@ -172,13 +172,21 @@ struct ContentView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.secondary)
                         
-                        HStack {
-                            Slider(value: $particleSize, in: 0.1...5.0)
-                                .accentColor(.blue)
-                            
-                            Text(String(format: "%.1f", particleSize))
-                                .font(.system(.body, design: .monospaced))
-                                .frame(width: 35)
+                        HStack(spacing: 10) {
+                            ForEach([(2.0, "Small"), (3.0, "Medium"), (5.0, "Large")], id: \.0) { size, label in
+                                Button(action: {
+                                    particleSize = size
+                                }) {
+                                    Text(label)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(particleSize == size ? Color.blue : Color.secondary.opacity(0.1))
+                                        .foregroundColor(particleSize == size ? .white : .primary)
+                                        .cornerRadius(8)
+                                }
+                            }
                         }
                     }
                     .padding()

@@ -4,9 +4,8 @@
 
 _Interactive weather layers to customize for MapTiler SDK Swift_
 
-[![](https://img.shields.io/badge/Swift-6.0+-f2f6ff?style=for-the-badge&labelColor=D3DBEC&logo=swift&logoColor=333359)](https://swift.org)
-[![](https://img.shields.io/badge/iOS-15.0+-f2f6ff?style=for-the-badge&labelColor=D3DBEC&logo=apple&logoColor=333359)](https://www.apple.com/ios/)
-[![](https://img.shields.io/badge/License-BSD--3--Clause-f2f6ff?style=for-the-badge&labelColor=D3DBEC&logo=opensourceinitiative&logoColor=333359)](./LICENSE)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmaptiler%2Fmaptiler-weather-swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/maptiler/maptiler-weather-swift)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmaptiler%2Fmaptiler-weather-swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/maptiler/maptiler-weather-swift)
 
 ---
 

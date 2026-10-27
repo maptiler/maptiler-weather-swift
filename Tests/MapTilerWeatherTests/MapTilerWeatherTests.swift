@@ -4,7 +4,7 @@ import XCTest
 final class MapTilerWeatherTests: XCTestCase {
     func testInitialization() throws {
         let weather = MapTilerWeather()
-        XCTAssertEqual(weather.version(), "1.0.0")
+        XCTAssertEqual(weather.version(), "1.0.1")
     }
 
     func testPressureLayerInitialization() throws {

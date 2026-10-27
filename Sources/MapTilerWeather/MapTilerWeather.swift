@@ -4,6 +4,6 @@ public struct MapTilerWeather {
     public init() {}
 
     public func version() -> String {
-        return "1.0.0"
+        return "1.0.1"
     }
 }
